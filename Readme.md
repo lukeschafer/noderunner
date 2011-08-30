@@ -32,6 +32,21 @@ Config options (all are optional)
   - suppressConsole : bool [default:false] Enables noderunner to override console.log and console.err so it doesn't clutter output
   - useColors       : bool [default:true]  Whether to color console ouput. Defaults false if platform == win32  
 
+Run all tests in a directory
+
+    require('noderunner').runFromDir(require('path').resolve('./tests'));
+	
+Manually run one test
+
+    require('noderunner').run(require('testfile.js'));
+	
+Manually run multiple tests
+
+    require('noderunner').runAll({
+        'tests1': require('tests1.js'),
+        'tests2': require('tests2.js')
+    });
+  
 For more usage examples, check out the tests in examplestests/testfixture.js
 
 ## License: The MIT License
