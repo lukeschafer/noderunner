@@ -21,6 +21,7 @@ Planned features:
 
   - Test hooks for alternate/custom output/reporting
   - Code coverage
+  - MAYBE custom asserts (building on existing asserts)
 
 ## Example
 
