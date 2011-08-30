@@ -24,6 +24,28 @@ Planned features:
         .setup({showSuccesses:true})
         .runFromDir(require('path').resolve('./tests'));
 
+    //in tests.js
+    module.exports = {
+        setup: function(done) {
+            someDependency = require('someDependency').init();
+            done();
+        },
+        "test that something happens": function() {
+            assert.ok(true);
+        },
+        "test that something async happens": function(async) {
+            setTimeout(function() {
+                async.complete();
+            }, 1000);
+            async(function() {
+                //this will be called to run the assertions once async.complete is called
+                assert.ok(true);
+            });
+        }
+    }
+        
+For more usage examples, check out the tests in examplestests/testfixture.js
+
 ## API
 
 Config options (all are optional)
@@ -35,19 +57,17 @@ Config options (all are optional)
 Run all tests in a directory
 
     require('noderunner').runFromDir(require('path').resolve('./tests'));
-	
+    
 Manually run one test
 
     require('noderunner').run(require('testfile.js'));
-	
+    
 Manually run multiple tests
 
     require('noderunner').runAll({
         'tests1': require('tests1.js'),
         'tests2': require('tests2.js')
     });
-  
-For more usage examples, check out the tests in examplestests/testfixture.js
 
 ## License: The MIT License
 
