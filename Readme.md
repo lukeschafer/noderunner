@@ -5,15 +5,15 @@
   
   noderunner was inspired by expresso, without being tied to posix systems. Like expresso, it has intuitive support for testing async code.
   
-  It's worthwhile noting that all tests run in serial. This was a design choice made early on, as it makes handling fixtures simpler and more intuitive. Convince me otherwise and I'll change it.
+  It's worthwhile noting that all tests run in serial. This was a design choice made early on, as it makes handling fixtures simpler and more intuitive (following the principle of least surprise). If you have a good use case against it (likely), or figure out a way to work it in without changing everything else (unlikely) let me know, or push it up :).
   
 ## What's it do?
 
-  - run sync or async tests
+  - run sync or async tests (in serial)
   - fixture setup/teardown and test setup/teardown
   - run tests individually or from a directory
   - support for 'ignore'
-  - colored console output and options for console reporting
+  - colored console output and options for console reporting (like not allowing other code to write to console)
   
 ## Coming
 
