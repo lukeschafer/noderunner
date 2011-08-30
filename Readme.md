@@ -24,7 +24,7 @@ Planned features:
         .setup({showSuccesses:true})
         .runFromDir(require('path').resolve('./tests'));
 
-    //in tests.js
+    //in tests/test.js
     module.exports = {
         setup: function(done) {
             someDependency = require('someDependency').init();
