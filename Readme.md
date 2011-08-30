@@ -1,7 +1,11 @@
 
 # noderunner
 
-  simple test runner for node.js
+  light weight test runner for node.js.
+  
+  noderunner was inspired by expresso, without being tied to posix systems. Like expresso, it has intuitive support for testing async code.
+  
+  It's worthwhile noting that all tests run in serial. This was a design choice made early on, as it makes handling fixtures simpler and more intuitive. Convince me otherwise and I'll change it.
   
 ## What's it do?
 
