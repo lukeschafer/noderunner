@@ -14,12 +14,12 @@
   - run tests individually or from a directory
   - support for 'ignore'
   - colored console output and options for console reporting (like not allowing other code to write to console)
-  
+  - test hooks for custom output/display. E.g. noderunner.on('failure' fn); 
 ## Coming
 
 Planned features:
 
-  - Test hooks for alternate/custom output/reporting
+  - DONE! Test hooks for alternate/custom output/reporting
   - Code coverage
   - MAYBE custom asserts (building on existing asserts)
 
@@ -58,6 +58,7 @@ Config options (all are optional)
   - showSuccesses   : bool [default:false] Whether to log successful tests to console
   - suppressConsole : bool [default:false] Enables noderunner to override console.log and console.err so it doesn't clutter output
   - useColors       : bool [default:true]  Whether to color console ouput. Defaults false if platform == win32  
+  - writeToConsole  : bool [default:true]  Should noderunner log success/failure messages to console? (set false only if you subscribe to the events)
 
 Run all tests in a directory
 
@@ -73,6 +74,19 @@ Manually run multiple tests
         'tests1': require('tests1.js'),
         'tests2': require('tests2.js')
     });
+
+Add hooks for your own output/monitoring
+
+    var noderunner = require('noderunner').runAllFromDir(dir);
+    noderunner.on('failure', function(fixtureName, name, error) {
+        addToHtmlOutput('red', 'FAILED', fixtureName, name, error.stack);
+    }
+    noderunner.on('success', function(fixtureName, name) {
+        addToHtmlOutput('green', 'SUCCESS' fixtureName, name, 'completed');
+    }
+    noderunner.on('ignore', function(fixtureName, name, reason) {
+        addToHtmlOutput('yellow', 'IGNORED', fixtureName, name, reason);
+    }
 
 ## License: The MIT License
 

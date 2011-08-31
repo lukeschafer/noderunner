@@ -1,0 +1,5 @@
+FAILEDtestfixture this is an async test that fails! AssertionError: false == true
+    at Function.myCallback (/cygdrive/c/Dev/lukeschafer/noderunner/examples/tests/testfixture.js:56:11)
+    at Function.complete (/cygdrive/c/Dev/lukeschafer/noderunner/index.js:93:13)
+    at Object._onTimeout (/cygdrive/c/Dev/lukeschafer/noderunner/examples/tests/testfixture.js:52:10)
+    at Timer.callback (timers_legacy.js:83:39)
