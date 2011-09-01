@@ -2,7 +2,7 @@ var fs = require( 'fs' );
 var path = require('path');
 
 //internal
-var successes = 0, failures = 0, totalFixtures = 0, fixturesRun = 0;
+var successes = 0, failures = 0, ignored = 0, totalFixtures = 0, fixturesRun = 0, completed = false;
 
 //options
 var showSuccesses = false, suppressConsole = false, useColors = true, writeToConsole = true;
@@ -101,7 +101,7 @@ var run = noderunner.run = function (fixtureName, tests, callback, reportWhenDon
 						isAsync = true;
 						async.isComplete = false;
 						async.myCallback = callback;
-						process.on('beforeExit', async.complete);
+						noderunner.once('beforeExit', async.complete);
 					};
 					async.complete = function complete(){
 						if (async.isComplete) return; async.isComplete = true;
@@ -134,20 +134,39 @@ var run = noderunner.run = function (fixtureName, tests, callback, reportWhenDon
 }
 
 function complete() {
-
-}
-
-process.once('exit', function() {
-	process.emit('beforeExit');
-	printlog('\n==========================================================================');
+	if (completed) return;
+	completed = true;
+	noderunner.emit('beforeExit');
 	
 	var allran = totalFixtures == fixturesRun;
 	var failed = failures || !allran;
 	
-	(failed?printerr:printlog)('Tests ' + (failed?red('FAILED') + ': ':'\033[32mPASSED\033[0m: ') + (successes+failures) + ' tests run. ' + successes + ' succeeded and ' + failures + ' failed');
-	if (!allran) printerr(red('FAILURE') + ': not all test fixtures completed! Only completed ' + fixturesRun + ' of ' + totalFixtures + '. Perhaps an async testmissed calling async.complete(), or a setup/teardown didn\'t call the callback');
+	noderunner.emit('complete', {
+		success: !failed,
+		totalFixtures: totalFixtures,
+		fixturesRun: fixturesRun,
+		testsRun: (successes + failures + ignored),
+		successes: successes,
+		failures: failures,
+		ignored: ignored
+	});
+	return !failed;
+}
+
+noderunner.on('complete', function(data) {
+	if (writeToConsole)
+		printlog('\n==========================================================================');
 	
-	if (failed) process.exit(1);
+	var allran = data.totalFixtures == data.fixturesRun;
+	
+	if (writeToConsole) {
+		(data.success ? printlog:printerr)('Tests ' + (data.success ? green('PASSED') : red('FAILED')) + ': ' + data.testsRun + ' tests run. ' + data.successes + ' succeeded, ' + data.failures + ' failed and ' + data.ignored + ' ignored' );
+		if (!allran) printerr(red('FAILURE') + ': not all test fixtures completed! Only completed ' + data.fixturesRun + ' of ' + data.totalFixtures + '. Perhaps an async testmissed calling async.complete(), or a setup/teardown didn\'t call the callback');
+	}
+});
+
+process.once('exit', function() {
+	complete()
 });
 
 noderunner.on('running', function(test) {
@@ -173,7 +192,7 @@ noderunner.on('success', function(fixtureName, name) {
 });
 
 noderunner.on('ignore', function(fixtureName, name, reason) {
-	++successes;
+	++ignored;
 	if (writeToConsole)
 		printlog(yellow('    [IGNORE]  ') + fixtureName + '=>"' + name + '" Reason: ' + reason );
 });
