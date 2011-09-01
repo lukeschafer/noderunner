@@ -1,0 +1,2 @@
+node .\testrunner.js
+pause
