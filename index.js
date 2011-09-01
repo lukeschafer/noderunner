@@ -1,56 +1,97 @@
 var fs = require( 'fs' );
 var path = require('path');
+var assert = require('assert');
 
-var showSuccesses = false, successes = 0, failures = 0, totalFixtures = 0, fixturesRun = 0, suppressConsole = false, useColors = true;
+//internal
+var successes = 0, failures = 0, ignored = 0, totalFixtures = 0, fixturesRun = 0, completed = false;
+var fixtures = {};
+
+//options
+var showSuccesses = false, suppressConsole = false, useColors = true, writeToConsole = true;
 if (process.platform == 'win32') useColors = false;
 
 var printlog = console.log;
 var printerr = console.error;
 
-module.exports.setup = function(config) {
-	showSuccesses = !!config.showSuccesses;
-	suppressConsole = !!config.suppressConsole;
+var noderunner = module.exports = new (require("events").EventEmitter)();
+
+noderunner.setup = function(config) {
+	if (config.showSuccesses === true || config.showSuccesses === false)
+		showSuccesses = !!config.showSuccesses;
+	if (config.suppressConsole === true || config.suppressConsole === false)
+		suppressConsole = !!config.suppressConsole;
+	if (config.useColors === true || config.useColors === false)
+		useColors = !!config.useColors;
+	if (config.writeToConsole === true || config.writeToConsole === false)
+		writeToConsole = !!config.writeToConsole;
+	
 	
 	if (suppressConsole) {
 		console.log = function(){};
 		console.error = function(){};
 	}
-	return module.exports;
+	return noderunner;
+};
+
+noderunner.reset = function() {
+	successes = 0;
+	failures = 0;
+	ignored = 0;
+	totalFixtures = 0;
+	fixturesRun = 0;
+	completed = false;
+	fixtures = {};
+	return noderunner;
 }
 
-module.exports.runFromDir = function(p) {
-	var fixtures = {};
+noderunner.addDirectory = function(p) {
 	fs.readdir(p, function( err, files ) {
 		files.forEach(function(file) {
 			var jsExt = /[.]js$/i;
 			if (!file.match(jsExt)) return;
 			var fixtureName = file.replace(jsExt,'');
 			printlog('Loading tests: ' + fixtureName + " in " + path.join(p, file));
-			fixtures[fixtureName] = require(path.join(p, file));
+			var t = require(path.join(p, file));
+			noderunner.add(fixtureName, t);
 		});
-		
-		runAll(fixtures);
 	});
+	return noderunner;
 }
 
-var runAll = module.exports.runAll = function(fixtures) {
+noderunner.add = function (fixtureName, tests) {
+	assert.ok('string' == typeof fixtureName, 'fixtureName should be a string');
+	assert.ok('object' == typeof tests, 'tests must be an object');
+	fixtures[fixtureName] = tests;
+	noderunner.emit('addfixture', fixtureName, tests);
+}
+
+noderunner.addAll = function (fixs) {
+	assert.ok('object' == typeof fixs, 'fixtures to add must be an object {key:tests}');
+	for (var k in fixs) if (fixs.hasOwnProperty(k)) noderunner.add(k, fixs[k]);
+}
+
+var run = noderunner.run = function() {
 	var fixtureNames = [], i = 0;
 	for (var k in fixtures) { fixtureNames.push(k); }
 	totalFixtures = fixtureNames.length;
-	
+	printlog(JSON.stringify(fixtures));
 	(function proceed() {
-		if (i >= fixtureNames.length) return;
+		if (i >= fixtureNames.length) {
+			complete();
+			return;
+		}
 		var k = fixtureNames[i];
 		++i;
-		printlog('\nRunning ' + k);
-		run(k, fixtures[k], function() {
+		noderunner.emit('running', k);
+		runOne(k, fixtures[k], function() {
 			++fixturesRun;
 			proceed();
-		});
+		}, false);
 	})();
+	return noderunner;
 }
 
-var run = module.exports.run = function (fixtureName, tests, callback) {
+function runOne (fixtureName, tests, callback, reportWhenDone) {
 	// remove cached modules so it's clean!
 	var m = require('module');
 	for (var k in m._cache) {
@@ -81,15 +122,15 @@ var run = module.exports.run = function (fixtureName, tests, callback) {
 					isAsync = true;
 					async.isComplete = false;
 					async.myCallback = callback;
-					process.on('beforeExit', async.complete);
+					noderunner.once('beforeExit', async.complete);
 				};
 				async.complete = function complete(){
 					if (async.isComplete) return; async.isComplete = true;
 					try {
 						async.myCallback();
-						success(fixtureName, k);
+						noderunner.emit('success', fixtureName, k);
 					} catch (e) {
-						err(fixtureName, k, e);
+						noderunner.emit('failure', fixtureName, k, e);
 					}
 					teardown(function() { proceed(); });
 				}
@@ -98,12 +139,12 @@ var run = module.exports.run = function (fixtureName, tests, callback) {
 					var resp = tests[k](async);
 					if (resp && resp['ignore']) {
 						isAsync = false;
-						ignore(fixtureName, k, resp['ignore'])
+						noderunner.emit('ignore', fixtureName, k, resp['ignore'])
 					} else {
-						if (!isAsync) success(fixtureName, k);
+						if (!isAsync) noderunner.emit('success', fixtureName, k);
 					}
 				} catch (e) {
-					err(fixtureName, k, e);
+					noderunner.emit('failure', fixtureName, k, e);
 				}
 				if (!isAsync) teardown(function() { teardown(proceed); });
 			});
@@ -111,38 +152,74 @@ var run = module.exports.run = function (fixtureName, tests, callback) {
 	});
 }
 
-process.once('exit', function() {
-	process.emit('beforeExit');
-	printlog('\n==========================================================================');
+function complete() {
+	if (completed) return;
+	completed = true;
+	noderunner.emit('beforeExit');
 	
 	var allran = totalFixtures == fixturesRun;
 	var failed = failures || !allran;
 	
-	(failed?printerr:printlog)('Tests ' + (failed?'\033[31mFAILED\033[0m: ':'\033[32mPASSED\033[0m: ') + (successes+failures) + ' tests run. ' + successes + ' succeeded and ' + failures + ' failed');
-	if (!allran) printerr(' \033[31mFAILURE\033[0m: not all test fixtures completed! Only completed ' + fixturesRun + ' of ' + totalFixtures + '. Perhaps an async testmissed calling async.complete(), or a setup/teardown didn\'t call the callback');
+	noderunner.emit('complete', {
+		success: !failed,
+		totalFixtures: totalFixtures,
+		fixturesRun: fixturesRun,
+		testsRun: (successes + failures + ignored),
+		successes: successes,
+		failures: failures,
+		ignored: ignored
+	});
+	return !failed;
+}
+
+noderunner.on('complete', function(data) {
+	if (writeToConsole)
+		printlog('\n==========================================================================');
 	
-	if (failed) process.exit(1);
+	var allran = data.totalFixtures == data.fixturesRun;
+	
+	if (writeToConsole) {
+		(data.success ? printlog:printerr)('Tests ' + (data.success ? green('PASSED') : red('FAILED')) + ': ' + data.testsRun + ' tests run. ' + data.successes + ' succeeded, ' + data.failures + ' failed and ' + data.ignored + ' ignored' );
+		if (!allran) printerr(red('FAILURE') + ': not all test fixtures completed! Only completed ' + data.fixturesRun + ' of ' + data.totalFixtures + '. Perhaps an async testmissed calling async.complete(), or a setup/teardown didn\'t call the callback');
+	}
 });
 
-function err(fixtureName, name, ex) {
+process.once('exit', function() {
+	complete()
+});
+
+noderunner.on('running', function(test) {
+	if (writeToConsole)
+		printlog('\nRunning ' + test);
+});
+
+noderunner.on('addfixture', function(name, tests) {
+	if (writeToConsole)
+		printlog('added fixture ' + name);
+});
+
+noderunner.on('failure', function(fixtureName, name, ex) {
 	++failures;
 	
 	var stack = (ex.stack || "")
 		.replace(/\n    /g, "\n        ")
 		.replace(/(\s[(]).*(.{30}[.]js[:])/g, "$1.../$2");
 	
-	printerr(red('    [FAILED]  ') + fixtureName + '=>"' + name + '" ::: ' + red(stack));
-}
+	if (writeToConsole)
+		printerr(red('    [FAILED]  ') + fixtureName + '=>"' + name + '" ::: ' + red(stack));
+});
 
-function success(fixtureName, name) {
+noderunner.on('success', function(fixtureName, name) {
 	++successes;
-	if (showSuccesses) printlog(green('    [SUCCESS] ') + fixtureName + '=>"' + name + '"');
-}
+	if (writeToConsole)
+		if (showSuccesses) printlog(green('    [SUCCESS] ') + fixtureName + '=>"' + name + '"');
+});
 
-function ignore(fixtureName, name, reason) {
-	++successes;
-	printlog(yellow('    [IGNORE]  ') + fixtureName + '=>"' + name + '" Reason: ' + reason );
-}
+noderunner.on('ignore', function(fixtureName, name, reason) {
+	++ignored;
+	if (writeToConsole)
+		printlog(yellow('    [IGNORE]  ') + fixtureName + '=>"' + name + '" Reason: ' + reason );
+});
 
 function red(str) {
 	if (!useColors) return str;
