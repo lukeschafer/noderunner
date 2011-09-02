@@ -4,7 +4,9 @@
   
   noderunner was inspired by expresso, without being tied to posix systems. Like expresso, it has intuitive support for testing async code.
   
-  It's worthwhile noting that all tests run in serial. This was a design choice made early on, as it makes handling fixtures simpler and more intuitive (following the principle of least surprise). I have been thinking of ways to support parallel tests without having them interfere, and I think I have a good idea, it'll just require a bit of playing around to get going. Stay tuned.
+  It's worthwhile noting that all tests run in serial. This was a design choice made early on, as it makes handling fixtures simpler and more intuitive (following the principle of least surprise). 
+  
+  Side Note: I have been thinking of ways to support parallel tests without having them interfere, and I have some good ideas, but it would involve either a) forcing a change in the way people write fixtures (really undesirable), or b) forcing it to only work when fixtures are loaded by 'requires' rather than inline (kinda undesirable). Ugh I don't know... Stay tuned.
   
 ## What's it do?
 
