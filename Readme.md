@@ -14,6 +14,7 @@
   - support for 'ignore'
   - colored console output and options for console reporting (like not allowing other code to write to console)
   - test hooks for custom output/display. E.g. noderunner.on('failure' fn); 
+
 ## Coming
 
 Planned features:
@@ -26,7 +27,8 @@ Planned features:
 
     require('noderunner')
         .setup({showSuccesses:true})
-        .runFromDir(require('path').resolve('./tests'));
+        .addDirectory(require('path').resolve('./tests'))
+		.run();
 
     //in tests/test.js
     module.exports = {
@@ -61,31 +63,63 @@ Config options (all are optional)
 
 Run all tests in a directory
 
-    require('noderunner').runFromDir(require('path').resolve('./tests'));
+    require('noderunner').addDirectory(require('path').resolve('./tests')).run();
     
 Manually run one test
 
-    require('noderunner').run(require('testfile.js'));
+    require('noderunner').add('sometests', require('testfile.js')).run();
     
 Manually run multiple tests
 
-    require('noderunner').runAll({
+    require('noderunner').addAll({
         'tests1': require('tests1.js'),
         'tests2': require('tests2.js')
-    });
+    }).run();
 
+Mix 'n' match
+
+    require('noderunner')
+	.addDirectory(require('path').resolve('./tests'))
+	.addAll({
+        'tests1': require('tests1.js'),
+        'tests2': require('tests2.js')
+    })
+	.add('sometests', require('testfile.js'))
+	.run();
+	
 Add hooks for your own output/monitoring
 
-    var noderunner = require('noderunner').runAllFromDir(dir);
+    var noderunner = require('noderunner').addDirectory(dir).run();
+	
+	noderunner.once('addfixture', function(fixtureName, tests) {
+		addToHtmlOutput('black', 'ADD', fixtureName, '', '');
+	});
+	noderunner.once('ready', function() {
+		//running tests
+	});
     noderunner.on('failure', function(fixtureName, name, error) {
         addToHtmlOutput('red', 'FAILED', fixtureName, name, error.stack);
-    }
+    });
+    noderunner.on('failure', function(fixtureName, name, error) {
+        addToHtmlOutput('red', 'FAILED', fixtureName, name, error.stack);
+    });
     noderunner.on('success', function(fixtureName, name) {
         addToHtmlOutput('green', 'SUCCESS' fixtureName, name, 'completed');
-    }
+    });
     noderunner.on('ignore', function(fixtureName, name, reason) {
         addToHtmlOutput('yellow', 'IGNORED', fixtureName, name, reason);
-    }
+    });
+    noderunner.on('complete', function(state) {
+        /* state contains: {
+			success: BOOL,
+			totalFixtures: NUMBER,
+			fixturesRun: NUMBER, //if fixturesRun != totalFixtures then success will be false - something's wrong
+			testsRun: NUMBER, //successes + failures + ignored
+			successes: NUMBER,
+			failures: NUMBER,
+			ignored: NUMBER
+		}
+    });
 
 ## License: The MIT License
 

@@ -60,4 +60,4 @@ module.exports = {
 	"if configured with suppressConsole, console writes shouldn't show": function() {
 		console.log('yo');
 	}
-}
+};

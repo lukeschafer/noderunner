@@ -15,6 +15,8 @@ var printerr = console.error;
 
 var noderunner = module.exports = new (require("events").EventEmitter)();
 
+var waiting = false;
+
 noderunner.setup = function(config) {
 	if (config.showSuccesses === true || config.showSuccesses === false)
 		showSuccesses = !!config.showSuccesses;
@@ -45,15 +47,17 @@ noderunner.reset = function() {
 }
 
 noderunner.addDirectory = function(p) {
+	waiting = true;
 	fs.readdir(p, function( err, files ) {
 		files.forEach(function(file) {
 			var jsExt = /[.]js$/i;
 			if (!file.match(jsExt)) return;
 			var fixtureName = file.replace(jsExt,'');
 			printlog('Loading tests: ' + fixtureName + " in " + path.join(p, file));
-			var t = require(path.join(p, file));
-			noderunner.add(fixtureName, t);
+			noderunner.add(fixtureName, require(path.join(p, file)));
 		});
+		waiting = false;
+		noderunner.emit('ready');
 	});
 	return noderunner;
 }
@@ -71,23 +75,31 @@ noderunner.addAll = function (fixs) {
 }
 
 var run = noderunner.run = function() {
-	var fixtureNames = [], i = 0;
-	for (var k in fixtures) { fixtureNames.push(k); }
-	totalFixtures = fixtureNames.length;
-	printlog(JSON.stringify(fixtures));
-	(function proceed() {
-		if (i >= fixtureNames.length) {
-			complete();
-			return;
-		}
-		var k = fixtureNames[i];
-		++i;
-		noderunner.emit('running', k);
-		runOne(k, fixtures[k], function() {
-			++fixturesRun;
-			proceed();
-		}, false);
-	})();
+	function gogogo() {
+		var fixtureNames = [], i = 0;
+		for (var k in fixtures) { fixtureNames.push(k); }
+		totalFixtures = fixtureNames.length;
+		
+		(function proceed() {
+			if (i >= fixtureNames.length) {
+				complete();
+				return;
+			}
+			var k = fixtureNames[i];
+			++i;
+			noderunner.emit('running', k);
+			runOne(k, fixtures[k], function() {
+				++fixturesRun;
+				proceed();
+			}, false);
+		})();
+	}
+	
+	if (!waiting)
+		process.nextTick(function() { gogogo(); }); //allow event listeners to be bound after a chained .run()
+	else
+		noderunner.once('ready', gogogo);
+	
 	return noderunner;
 }
 
@@ -122,9 +134,9 @@ function runOne (fixtureName, tests, callback, reportWhenDone) {
 					isAsync = true;
 					async.isComplete = false;
 					async.myCallback = callback;
-					noderunner.once('beforeExit', async.complete);
+					noderunner.once('beforeComplete', async.complete);
 				};
-				async.complete = function complete(){
+				async.complete = function(){
 					if (async.isComplete) return; async.isComplete = true;
 					try {
 						async.myCallback();
@@ -155,7 +167,7 @@ function runOne (fixtureName, tests, callback, reportWhenDone) {
 function complete() {
 	if (completed) return;
 	completed = true;
-	noderunner.emit('beforeExit');
+	noderunner.emit('beforeComplete');
 	
 	var allran = totalFixtures == fixturesRun;
 	var failed = failures || !allran;
@@ -195,7 +207,7 @@ noderunner.on('running', function(test) {
 
 noderunner.on('addfixture', function(name, tests) {
 	if (writeToConsole)
-		printlog('added fixture ' + name);
+		printlog('Added fixture: "' + name + '"');
 });
 
 noderunner.on('failure', function(fixtureName, name, ex) {
