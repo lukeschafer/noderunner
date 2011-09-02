@@ -91,14 +91,14 @@ Add hooks for your own output/monitoring
 
     var noderunner = require('noderunner').addDirectory(dir).run();
 	
-	noderunner.once('addfixture', function(fixtureName, tests) {
+	noderunner.on('addfixture', function(fixtureName, tests) {
 		addToHtmlOutput('black', 'ADD', fixtureName, '', '');
 	});
 	noderunner.once('ready', function() {
 		//running tests
 	});
-    noderunner.on('failure', function(fixtureName, name, error) {
-        addToHtmlOutput('red', 'FAILED', fixtureName, name, error.stack);
+    noderunner.on('running', function(fixtureName) {
+        addToHtmlOutput('black', 'RUNNING', fixtureName, '', '');
     });
     noderunner.on('failure', function(fixtureName, name, error) {
         addToHtmlOutput('red', 'FAILED', fixtureName, name, error.stack);
