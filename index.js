@@ -67,11 +67,13 @@ noderunner.add = function (fixtureName, tests) {
 	assert.ok('object' == typeof tests, 'tests must be an object');
 	fixtures[fixtureName] = tests;
 	noderunner.emit('addfixture', fixtureName, tests);
+	return noderunner;
 }
 
 noderunner.addAll = function (fixs) {
 	assert.ok('object' == typeof fixs, 'fixtures to add must be an object {key:tests}');
 	for (var k in fixs) if (fixs.hasOwnProperty(k)) noderunner.add(k, fixs[k]);
+	return noderunner;
 }
 
 var run = noderunner.run = function() {
@@ -162,6 +164,7 @@ function runOne (fixtureName, tests, callback, reportWhenDone) {
 			});
 		})(k);
 	});
+	return noderunner;
 }
 
 function complete() {
