@@ -53,12 +53,16 @@ noderunner.addDirectory = function(p) {
 			var jsExt = /[.]js$/i;
 			if (!file.match(jsExt)) return;
 			var fixtureName = file.replace(jsExt,'');
-			printlog('Loading tests: ' + fixtureName + " in " + path.join(p, file));
-			noderunner.add(fixtureName, require(path.join(p, file)));
+			noderunner.addFile(fixtureName, path.join(p, file));
 		});
 		waiting = false;
 		noderunner.emit('ready');
 	});
+	return noderunner;
+}
+noderunner.addFile = function(fixtureName, filepath) {
+	printlog('Loading tests: ' + fixtureName + " in " + filepath);
+	noderunner.add(fixtureName, require(filepath));
 	return noderunner;
 }
 

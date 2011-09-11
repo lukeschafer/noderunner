@@ -30,7 +30,7 @@ Planned features:
     require('noderunner')
         .setup({showSuccesses:true})
         .addDirectory(require('path').resolve('./tests'))
-		.run();
+        .run();
 
     //in tests/test.js
     module.exports = {
@@ -66,6 +66,10 @@ Config options (all are optional)
 Run all tests in a directory
 
     require('noderunner').addDirectory(require('path').resolve('./tests')).run();
+
+Run test file
+
+    require('noderunner').addFile(require('path').resolve('./test.js')).run();
     
 Manually run one test
 
@@ -81,24 +85,25 @@ Manually run multiple tests
 Mix 'n' match
 
     require('noderunner')
-	.addDirectory(require('path').resolve('./tests'))
-	.addAll({
-        'tests1': require('tests1.js'),
-        'tests2': require('tests2.js')
-    })
-	.add('sometests', require('testfile.js'))
-	.run();
-	
+        .addDirectory(require('path').resolve('./tests'))
+        .addFile(require('path').resolve('./test.js'))
+        .addAll({
+            'tests1': require('tests1.js'),
+            'tests2': require('tests2.js')
+        })
+        .add('sometests', require('testfile.js'))
+        .run();
+    
 Add hooks for your own output/monitoring
 
     var noderunner = require('noderunner').addDirectory(dir).run();
-	
-	noderunner.on('addfixture', function(fixtureName, tests) {
-		addToHtmlOutput('black', 'ADD', fixtureName, '', '');
-	});
-	noderunner.once('ready', function() {
-		//running tests
-	});
+    
+    noderunner.on('addfixture', function(fixtureName, tests) {
+        addToHtmlOutput('black', 'ADD', fixtureName, '', '');
+    });
+    noderunner.once('ready', function() {
+        //running tests
+    });
     noderunner.on('running', function(fixtureName) {
         addToHtmlOutput('black', 'RUNNING', fixtureName, '', '');
     });
@@ -113,14 +118,14 @@ Add hooks for your own output/monitoring
     });
     noderunner.on('complete', function(state) {
         /* state contains: {
-			success: BOOL,
-			totalFixtures: NUMBER,
-			fixturesRun: NUMBER, //if fixturesRun != totalFixtures then success will be false - something's wrong
-			testsRun: NUMBER, //successes + failures + ignored
-			successes: NUMBER,
-			failures: NUMBER,
-			ignored: NUMBER
-		}
+            success: BOOL,
+            totalFixtures: NUMBER,
+            fixturesRun: NUMBER, //if fixturesRun != totalFixtures then success will be false - something's wrong
+            testsRun: NUMBER, //successes + failures + ignored
+            successes: NUMBER,
+            failures: NUMBER,
+            ignored: NUMBER
+        }
     });
 
 ## License: The MIT License
